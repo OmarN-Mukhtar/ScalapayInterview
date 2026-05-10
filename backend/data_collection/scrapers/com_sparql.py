@@ -23,17 +23,13 @@ DB_NAME = get_db_name()
 # SPARQL Endpoint
 SPARQL_ENDPOINT = "http://publications.europa.eu/webapi/rdf/sparql"
 
-# Query file - look in both locations for flexibility
+# Query file
 QUERY_FILE_LOCATIONS = [
     "backend/data_collection/queries/com_queries.rq",
-    "com_queries.rq"
 ]
 
 def get_query_file_path():
     """Find the query file in available locations"""
-    for path in QUERY_FILE_LOCATIONS:
-        if os.path.exists(path):
-            return path
     return QUERY_FILE_LOCATIONS[0]
 
 def read_sparql_query(filename):
@@ -45,9 +41,8 @@ def read_sparql_query(filename):
         print(f"Error: {filename} not found")
         return None
 
-# Schema is initialized via db_init.py - no need to recreate here
 
-# CELLAR download headers, adapted from eu_corpus_compiler's CELLAR fetch step.
+# CELLAR download headers
 CELLAR_ACCEPT_HEADERS = {
     'Accept': (
         'application/xhtml+xml, text/html, text/html;type=simplified, '
@@ -380,7 +375,7 @@ def store_documents(documents):
             doc_id = generate_unique_id()
             text = fetch_document_text(doc)
 
-            # Fallback: if extracted text is empty, use the title
+            # Fallback if extracted text is empty, use the title
             if not text or not text.strip():
                 text = doc.get("title", "")
             

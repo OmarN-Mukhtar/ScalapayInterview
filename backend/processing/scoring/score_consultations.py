@@ -25,7 +25,7 @@ conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 
-# Add score columns if they do not already exist
+# Add score columns
 for column in [
     "relevance INTEGER",
     "urgency INTEGER",
