@@ -42,38 +42,6 @@ def xml_to_text(xml):
     return soup.get_text('\n', strip=True)
 
 
-# def extract_text_from_bytes(content, filename='', content_type=''):
-#     """Extract text from content bytes."""
-#     text = content.decode('utf-8', errors='replace')
-#     if filename.lower().endswith(('.html', '.xhtml')) or 'html' in content_type.lower():
-#         return html_to_text(text)
-#     if filename.lower().endswith('.xml') or 'xml' in content_type.lower():
-#         return xml_to_text(text)
-#     return text
-
-
-# def extract_zip_text(content):
-#     """Extract text from all files in a ZIP."""
-#     texts = []
-#     with zipfile.ZipFile(io.BytesIO(content)) as archive:
-#         for name in archive.namelist():
-#             if name.lower().endswith(('.html', '.xhtml', '.xml')):
-#                 texts.append(extract_text_from_bytes(archive.read(name), name))
-#     return '\n\n'.join(text for text in texts if text).strip()
-
-
-# def fetch_url_text(url):
-#     """Download and extract text from a URL."""
-#     response = requests.get(url, headers=CELLAR_ACCEPT_HEADERS, timeout=60)
-#     response.raise_for_status()
-    
-#     content_type = response.headers.get('Content-Type', '').lower()
-    
-#     if 'zip' in content_type or response.content.startswith(b'PK'):
-#         return extract_zip_text(response.content)
-    
-#     return extract_text_from_bytes(response.content, url, content_type)
-
 def clean_text(text):
     lines = text.split('\n')
     # Drop first line if it looks like a filename
