@@ -1,0 +1,108 @@
+PREFIX cdm:  <http://publications.europa.eu/ontology/cdm#>        # Loads the Cellar/CDM vocabulary used for EU document metadata
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>               # Loads SKOS, used for EuroVoc labels and concepts
+PREFIX dc:   <http://purl.org/dc/elements/1.1/>                   # Loads Dublin Core, used here for EuroVoc identifiers
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>                  # to allow xml schema for data filter
+
+SELECT DISTINCT                                                    # Return unique rows only
+  ?cellar_output_type                                              # Either "Legislative proposal" or "Public consultation"
+  ?concept_name                                                    # The specific EuroVoc descriptor name
+  ?eurovoc_id                                                      # The EuroVoc concept identifier
+  ?celex_id                                                        # The CELEX identifier, where available
+  ?resource_type_label                                             # Cellar resource type label, where available
+  ?title                                                           # The English title of the document
+  ?work                                                            # The URI of the EU document/work
+  ?cellar_id                                                       # CELLAR id used to download XML/HTML text
+  ?work_date                                                       # The publication/creation date of the work
+WHERE {                                                            # Start of the query conditions
+
+  VALUES ?concept {                                                # List of EuroVoc concepts to filter documents by
+
+    <http://eurovoc.europa.eu/8469>                                # financial services
+    <http://eurovoc.europa.eu/4491>                                # financial transaction
+    <http://eurovoc.europa.eu/2216>                                # payment
+    <http://eurovoc.europa.eu/2220>                                # intra-EU payment
+    <http://eurovoc.europa.eu/c_e749c083>                          # payment system
+    <http://eurovoc.europa.eu/1971>                                # electronic money
+    <http://eurovoc.europa.eu/c_79e507c2>                          # financial technology
+    <http://eurovoc.europa.eu/3172>                                # regulation of transactions
+
+    <http://eurovoc.europa.eu/285>                                 # credit
+    <http://eurovoc.europa.eu/2606>                                # loan
+    <http://eurovoc.europa.eu/c_896e199b>                          # credit rating / credit assessment
+    <http://eurovoc.europa.eu/1000>                                # financing
+    <http://eurovoc.europa.eu/1476>                                # interest
+
+    <http://eurovoc.europa.eu/5465>                                # money laundering
+    <http://eurovoc.europa.eu/c_9d09fbc3>                          # terrorism financing
+    <http://eurovoc.europa.eu/574>                                 # economic offence
+    <http://eurovoc.europa.eu/5560>                                # organised crime
+
+    <http://eurovoc.europa.eu/c_406ad4cc>                          # risk management
+    <http://eurovoc.europa.eu/c_04ae3ba8>                          # information security
+    <http://eurovoc.europa.eu/c_ff983fb3>                          # user authorisation
+    <http://eurovoc.europa.eu/5922>                                # computer system
+    <http://eurovoc.europa.eu/c_dcf3f7c0>                          # financial risk
+
+    <http://eurovoc.europa.eu/5181>                                # data protection
+    <http://eurovoc.europa.eu/5595>                                # personal data
+    <http://eurovoc.europa.eu/231611>                              # artificial intelligence
+    <http://eurovoc.europa.eu/c_edee9606>                          # European Data Protection Board
+    <http://eurovoc.europa.eu/7927>                                # European Data Protection Supervisor
+    <http://eurovoc.europa.eu/7938>                                # EU Agency for Cybersecurity
+    <http://eurovoc.europa.eu/3027>                                # computer crime
+  }
+
+  ?work cdm:work_is_about_concept_eurovoc ?concept .               # Keep only documents tagged with one of the EuroVoc concepts above
+
+  BIND(REPLACE(STR(?work), "^.*/", "") AS ?cellar_id)             # Extract CELLAR id from work URI
+
+  ?work cdm:work_created_by_agent                                  # Keep only documents created by the European Commission
+        <http://publications.europa.eu/resource/authority/corporate-body/COM> .
+
+  ?concept dc:identifier ?eurovoc_id ;                             # Get the EuroVoc identifier
+           skos:prefLabel ?concept_name .                          # Get the EuroVoc concept name
+
+  FILTER(LANG(?concept_name) = "en")                                # Keep only English concept labels
+
+  OPTIONAL {                                                        # CELEX is optional because consultations may not have CELEX IDs
+    ?work cdm:resource_legal_id_celex ?celex_id .
+  }
+
+  OPTIONAL {                                                        # Try to get Cellar's official resource type
+    ?work cdm:work_has_resource-type ?resource_type .
+
+    OPTIONAL {
+      ?resource_type skos:prefLabel ?resource_type_label .
+      FILTER(LANG(?resource_type_label) = "en")
+    }
+  }
+
+  ?expr cdm:expression_belongs_to_work ?work ;                     # Get the English version of the work
+        cdm:expression_uses_language
+          <http://publications.europa.eu/resource/authority/language/ENG> ;
+        cdm:expression_title ?title .
+
+?work cdm:work_date_document ?work_date .
+
+FILTER(?work_date >= "2015-01-01"^^xsd:date)                      # Filter for works after 2015
+
+  BIND(COALESCE(STR(?celex_id), "") AS ?celex)                     # Convert CELEX ID to text; blank if missing
+  BIND(LCASE(STR(?title)) AS ?title_lc)                            # Lowercase title for matching
+  BIND(LCASE(COALESCE(STR(?resource_type_label), "")) AS ?rtype_lc) # Lowercase resource type for matching
+
+  BIND(                                                            # Classify only the two types you want
+    IF(REGEX(?celex, "^5[0-9]{4}PC[0-9]{4}$"),
+      "Legislative proposal",
+    IF(
+      REGEX(?rtype_lc, "consultation") ||
+      REGEX(?title_lc, "public consultation|targeted consultation|consultation|call for evidence|feedback period|questionnaire"),
+      "Public consultation",
+      "Other"
+    )) AS ?cellar_output_type
+  )
+
+  FILTER(?cellar_output_type != "Other")                           # Keep only legislative proposals and public consultations
+}
+
+ORDER BY DESC(?work_date)
+LIMIT 100
