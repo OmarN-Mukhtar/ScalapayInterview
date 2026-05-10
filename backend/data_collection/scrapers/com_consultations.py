@@ -5,7 +5,7 @@ import feedparser
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-from backend.db_init import (
+from ...db_init import (
     initialize_database,
     get_db_name,
     generate_id_from_link,
@@ -32,38 +32,21 @@ def fetch_rss_feed(url):
 def extract_metadata(entry):
     tags = entry.get("tags", []) or []
 
-    return {
-        "id": entry.get("id", entry.get("link", "")),
+    return {"id": entry.get("id", entry.get("link", "")),
         "title": entry.get("title", ""),
         "description": entry.get("summary", ""),
         "link": entry.get("link", ""),
         "published_date": entry.get("published", ""),
         "tags": ",".join(tag.get("term", "") for tag in tags),
-        "category": tags[0].get("term") if tags else "general",
-    }
+        "category": tags[0].get("term") if tags else "general",}
 
 
 def get_keyword_filters():
-    return {
-        "payment_services": [
-            "PSD2", "PSD3", "PSR", "settlement", "authorisation", "payment services"
-        ],
-        "bnpl_credit": [
-            "BNPL", "consumer credit", "CCD2", "responsible lending",
-            "consumer credit directive"
-        ],
-        "aml_cft": [
-            "AML", "CFT", "AMLD6", "transfer of funds", "TFR", "travel rule",
-            "EBA AML", "money laundering"
-        ],
-        "operational_resilience": [
-            "DORA", "digital operational resilience", "operational resilience"
-        ],
-        "data_ai": [
-            "GDPR", "AI Act", "artificial intelligence", "data protection",
-            "credit decisioning", "fraud model"
-        ],
-    }
+    return {"payment_services": ["PSD2", "PSD3", "PSR", "settlement", "authorisation", "payment services"],
+        "bnpl_credit": ["BNPL", "consumer credit", "CCD2", "responsible lending","consumer credit directive"],
+        "aml_cft": ["AML", "CFT", "AMLD6", "transfer of funds", "TFR", "travel rule","EBA AML", "money laundering"],
+        "operational_resilience": ["DORA", "digital operational resilience", "operational resilience"],
+        "data_ai": ["GDPR", "AI Act", "artificial intelligence", "data protection","credit decisioning", "fraud model"],}
 
 
 def matches_filter(title, description, filters):
@@ -84,11 +67,9 @@ def normalize_text(text):
 def clean_text_from_html(html):
     soup = BeautifulSoup(html, "html.parser")
 
-    for tag in soup([
-        "script", "style", "noscript", "nav", "header", "footer",
-        "svg", "button", "form", "highcharts-chart"
-    ]):
-        tag.decompose()
+    for tag in soup(["script", "style", "noscript", "nav", "header", "footer",
+        "svg", "button", "form", "highcharts-chart"]):
+        tag.decompose() # remove unwanted tags
 
     main = (
         soup.select_one("main#main-content") or
@@ -147,22 +128,10 @@ def split_date_range(text):
 
     return start.strip(), end.strip()
 
-
-def normalize_db_date(value):
-    if not value:
-        return None
-
-    try:
-        return parse_date_to_iso(value)
-    except Exception:
-        return None
-
 def extract_details_from_html(html):
-    details = {
-        "status": None,
+    details = {"status": None,
         "opening_date": None,
-        "deadline_date": None,
-    }
+        "deadline_date": None,}
 
     soup = BeautifulSoup(html, "html.parser")
 
@@ -191,17 +160,6 @@ def extract_details_from_html(html):
             details["opening_date"] = details["opening_date"] or start
             details["deadline_date"] = details["deadline_date"] or end
 
-    if not details["status"]:
-        meta_items = [
-            normalize_text(x.get_text(" ", strip=True))
-            for x in soup.select(".ecl-page-header__meta-item")
-        ]
-
-        for item in meta_items:
-            if item.lower() in {"open", "closed", "forthcoming"}:
-                details["status"] = item
-                break
-
     page_text = normalize_text(soup.get_text(" ", strip=True)).lower()
 
     if not details["status"] and (
@@ -210,42 +168,29 @@ def extract_details_from_html(html):
     ):
         details["status"] = "Closed"
 
-    details["opening_date"] = normalize_db_date(details["opening_date"])
-    details["deadline_date"] = normalize_db_date(details["deadline_date"])
+    details["opening_date"] = parse_date_to_iso(details["opening_date"])
+    details["deadline_date"] = parse_date_to_iso(details["deadline_date"])
 
     return details
 
 
 def fetch_consultation_page(url):
-    try:
-        html = fetch_rendered_html(url)
+    html = fetch_rendered_html(url)
 
-        return {
-            "details": extract_details_from_html(html),
-            "text": clean_text_from_html(html),
-        }
-
-    except Exception as e:
-        print(f"Error fetching page: {url} - {e}")
-
-        return {
-            "details": {
-                "status": None,
-                "opening_date": None,
-                "deadline_date": None,
-            },
-            "text": None,
-        }
+    return {
+        "details": extract_details_from_html(html),
+        "text": clean_text_from_html(html),
+    }
 
 
 def store_consultations(feed):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-
+    
     filters = get_keyword_filters()
     stored = 0
     skipped = 0
-
+    
     for entry in feed.entries:
         metadata = extract_metadata(entry)
         matched_categories = matches_filter(
@@ -253,18 +198,23 @@ def store_consultations(feed):
             metadata["description"],
             filters,
         )
-
+        
         if not matched_categories:
             skipped += 1
             continue
-
+        
+        # Fetch details immediately
+        page = fetch_consultation_page(metadata["link"])
+        details = page["details"]
+        text = page["text"]
+        
         pk_id = generate_id_from_link(metadata["link"])
-
+        
         cursor.execute("""
             INSERT OR REPLACE INTO com_consultations
             (id, url, title, description, published_date, type, category,
-             status, opening_date, deadline_date, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             status, opening_date, deadline_date, text, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             pk_id,
             metadata["link"],
@@ -273,62 +223,19 @@ def store_consultations(feed):
             parse_date_to_iso(metadata["published_date"]),
             "Public Consultation",
             ",".join(matched_categories),
-            None,
-            None,
-            None,
-            "European Commission",
-        ))
-
-        stored += 1
-
-    conn.commit()
-    conn.close()
-
-    return stored, skipped
-
-
-def enrich_consultations_with_details():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, url
-        FROM com_consultations
-        WHERE deadline_date IS NULL OR text IS NULL
-    """)
-
-    consultations = cursor.fetchall()
-    updated = 0
-    skipped = 0
-
-    for pk_id, url in consultations:
-        page = fetch_consultation_page(url)
-        details = page["details"]
-        text = page["text"]
-
-        if not any(details.values()) and not text:
-            skipped += 1
-            continue
-
-        cursor.execute("""
-            UPDATE com_consultations
-            SET status = ?, opening_date = ?, deadline_date = ?, text = ?
-            WHERE id = ?
-        """, (
             details["status"],
             details["opening_date"],
             details["deadline_date"],
             text,
-            pk_id,
+            "European Commission",
         ))
-
-        updated += 1
+        
+        stored += 1
         time.sleep(1)
-
+    
     conn.commit()
     conn.close()
-
-    return updated, skipped
+    return stored, skipped
 
 
 def main():
@@ -339,12 +246,10 @@ def main():
         return
 
     stored, skipped = store_consultations(feed)
-    enriched, detail_skipped = enrich_consultations_with_details()
 
     print(
         f"Done. RSS entries: {len(feed.entries)} | "
         f"stored: {stored} | skipped: {skipped} | "
-        f"enriched: {enriched} | detail skipped: {detail_skipped}"
     )
 
 
