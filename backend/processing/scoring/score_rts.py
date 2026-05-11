@@ -122,6 +122,9 @@ for row in rows:
         + data_confidence * 0.20
     )
 
+    if deadline is not None and today > deadline:
+        score = 25
+
     # Urgency level
     if score > 75:
         urgency_level = "high"

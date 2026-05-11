@@ -71,7 +71,7 @@ def load_data(db_path: str) -> pd.DataFrame:
         urgency,
         urgency_level,
         score,
-        NULL AS deadline_date
+        NULL ASdeadline_date
     FROM com_proposals
 
     UNION ALL
@@ -90,7 +90,7 @@ def load_data(db_path: str) -> pd.DataFrame:
         urgency,
         urgency_level,
         score,
-        NULL AS deadline_date
+        deadline_date
     FROM eba_guidelines
 
     UNION ALL
@@ -109,7 +109,7 @@ def load_data(db_path: str) -> pd.DataFrame:
         urgency,
         urgency_level,
         score,
-        NULL AS deadline_date
+        deadline_date
     FROM eba_rts
     """
 
