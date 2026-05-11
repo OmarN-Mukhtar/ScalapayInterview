@@ -62,8 +62,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        Status,
-        Type,
+        status AS Status,
+        type AS Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -81,8 +81,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        Status,
-        Type,
+        status AS Status,
+        type AS Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -100,8 +100,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        Status,
-        Type,
+        status AS Status,
+        type AS Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -124,7 +124,7 @@ def load_data(db_path: str) -> pd.DataFrame:
     df["urgency"] = pd.to_numeric(df["urgency"], errors="coerce").fillna(0)
 
     df["Type"] = df["Type"].fillna("Unknown")
-    df["urgency_level"] = df["urgency_level"].fillna("unknown").str.lower()
+    df["urgency_level"] = df["urgency_level"].str.capitalize()
     df["impact_area"] = df["impact_area"].fillna("Unclassified")
     df["summary"] = df["summary"].fillna("No summary available.")
     df["source"] = df["source"].fillna("Unknown")
@@ -187,12 +187,13 @@ def make_donut(
             textposition="inside",
             texttemplate="%{customdata[1]}<br>%{customdata[2]}",
             hovertemplate="%{label}<br>%{value} items<extra></extra>",
-            insidetextorientation="radial",
+            insidetextorientation="tangential",
+            automargin=True
         )
     )
 
     fig.update_layout(
-    title=dict(text=title, x=0.5, y=1.0),
+    title=dict(text=title, x=0.5, y=0.99),
         showlegend=False,
         margin=dict(t=0, b=0, l=0, r=0),
         height=470,
@@ -247,14 +248,11 @@ def render_clickable_donut(
 
 def render_home(df: pd.DataFrame) -> None:
     st.title("⚖️ Regulatory Monitoring Dashboard")
-    st.write(
-        "A compact view of monitored regulatory items, grouped by document Type and urgency."
-    )
 
     top1, top2, top3 = st.columns(3)
 
     top1.metric("Total items", len(df))
-    top2.metric("High urgency", int((df["urgency_level"] == "high").sum()))
+    top2.metric("High urgency", int((df["urgency_level"] == "High").sum()))
     top3.metric("Sources", df["source"].nunique())
 
     st.divider()
@@ -290,7 +288,7 @@ def render_home(df: pd.DataFrame) -> None:
             urgency_counts,
             label_col="urgency_level",
             value_col="count",
-            title="Items by urgency",
+            title="Items by Urgency",
             mode="urgency_level",
             key="urgency_donut",
         )
@@ -490,8 +488,16 @@ def main() -> None:
                 navigate("Type", item_Type)
 
         st.divider()
-        st.caption(f"Database: `{Path(db_path).name}`")
+        st.subheader("Urgency")
 
+        urgency_counts = df["urgency_level"].value_counts().sort_index()
+        for index, (urgency, count) in enumerate(urgency_counts.items()):
+            if st.button(f"{urgency.title()} ({count})", key=f"sidebar_urgency_{index}"):
+                navigate("urgency_level", urgency)
+
+        st.divider()
+        st.caption(f"Database: `{Path(db_path).name}`")
+   
     if mode == "home":
         render_home(df)
     else:
