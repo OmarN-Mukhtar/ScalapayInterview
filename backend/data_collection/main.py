@@ -12,6 +12,7 @@ from backend.data_collection.scrapers.com_consultations import main as com_consu
 from backend.data_collection.scrapers.com_sparql import main as com_sparql_main
 from backend.data_collection.scrapers.eba_guidelines import scrape_all as eba_guidelines_scrape
 from backend.data_collection.scrapers.eba_rts import scrape_all as eba_rts_scrape
+from backend.data_collection.scrapers.eba_deadlines import main as eba_deadlines_main
 
 
 def print_header(title):
@@ -68,6 +69,13 @@ def main():
         print(f"✓ Stored {count} EBA RTS")
     except Exception as e:
         print(f"⚠ Error in EBA RTS: {e}")
+
+    # Extract deadlines from EBA Guidelines and RTS
+    print_header("STEP 6: EXTRACT DEADLINES FROM EBA DOCUMENTS")
+    try:
+        eba_deadlines_main()
+    except Exception as e:
+        print(f"⚠ Error in EBA Deadline Extraction: {e}")
     
     # Summary
     end_time = datetime.now()

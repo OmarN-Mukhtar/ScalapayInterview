@@ -39,7 +39,7 @@ for column in [
         pass
 
 rows = cur.execute("""
-    SELECT id, status, keyword_count, deadline_date, refined_category, AI_category
+    SELECT id, status, keyword_count, deadline_date, refined_category, ai_category
     FROM com_consultations
 """).fetchall()
 
@@ -104,7 +104,7 @@ for row in rows:
 
     # 3. Data confidence score
     refined_unknown = is_unknown(row["refined_category"])
-    ai_unknown = is_unknown(row["AI_category"])
+    ai_unknown = is_unknown(row["ai_category"])
 
     if refined_unknown and not ai_unknown:
         data_confidence = 20

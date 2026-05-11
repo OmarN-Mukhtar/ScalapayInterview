@@ -40,7 +40,7 @@ for column in [
         pass
 
 rows = cur.execute(f"""
-    SELECT id, keyword_count, published_date, refined_category, AI_category
+    SELECT id, keyword_count, deadline_date, refined_category, ai_category
     FROM {TABLE_NAME}
 """).fetchall()
 
@@ -67,13 +67,13 @@ for row in rows:
     else:
         relevance = 25
 
-    # 2. Urgency score based on published_date age
-    published = parse_date(row["published_date"])
+    # 2. Urgency score based on deadline_date age
+    deadline = parse_date(row["deadline_date"])
 
-    if published is None:
+    if deadline is None:
         urgency = 5
     else:
-        age_years = (today - published).days / 365.25
+        age_years = (today - deadline).days / 365.25
 
         if age_years > 10:
             urgency = 5
@@ -88,7 +88,7 @@ for row in rows:
 
     # 3. Data confidence score
     refined_unknown = is_unknown(row["refined_category"])
-    ai_unknown = is_unknown(row["AI_category"])
+    ai_unknown = is_unknown(row["ai_category"])
 
     if refined_unknown and not ai_unknown:
         data_confidence = 20

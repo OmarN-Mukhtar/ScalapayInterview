@@ -39,7 +39,7 @@ for column in [
         pass
 
 rows = cur.execute("""
-    SELECT id, keyword_count, published_date, refined_category, AI_category
+    SELECT id, keyword_count, published_date, refined_category, ai_category
     FROM com_proposals
 """).fetchall()
 
@@ -72,22 +72,22 @@ for row in rows:
     if published is None:
         urgency = 5
     else:
-        age_years = (today - published).days / 365.25
+        age_years = (today - published).days 
 
-        if age_years > 10:
+        if age_years > 100:
             urgency = 5
-        elif age_years > 6:
+        elif age_years > 80:
             urgency = 30
-        elif age_years > 4:
+        elif age_years > 50:
             urgency = 50
-        elif age_years > 2:
+        elif age_years > 30:
             urgency = 75
         else:
             urgency = 100
 
     # 3. Data confidence score
     refined_unknown = is_unknown(row["refined_category"])
-    ai_unknown = is_unknown(row["AI_category"])
+    ai_unknown = is_unknown(row["ai_category"])
 
     if refined_unknown and not ai_unknown:
         data_confidence = 20
