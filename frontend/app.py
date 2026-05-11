@@ -42,7 +42,7 @@ def load_data(db_path: str) -> pd.DataFrame:
         id,
         title,
         source,
-        published_date,
+        opening_date AS published_date,
         status AS Status,
         type AS Type,
         summary,
