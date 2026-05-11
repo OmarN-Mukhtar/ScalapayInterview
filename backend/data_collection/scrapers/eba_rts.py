@@ -67,6 +67,12 @@ def parse_page(html, category):
         
         date_el = card.find("time")
         date = date_el.get_text(strip=True) if date_el else None
+
+        DATE_RE = re.compile(r"\b\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\b")
+
+        if not date:
+            match = DATE_RE.search(card.get_text(" ", strip=True))
+            date = match.group(0) if match else None
         
         doc_link = None
         url_link = None

@@ -33,29 +33,6 @@ st.set_page_config(
     layout="wide",
 )
 
-st.markdown(
-    f"""
-    <style>
-    .stApp {{
-        background: {SCALAPAY_BG};
-    }}
-
-    [data-testid="stMetric"] {{
-        background: #FFFFFF;
-        border: 1px solid #F7CBCF;
-        border-radius: 16px;
-        padding: 16px;
-    }}
-
-    iframe {{
-        background: {SCALAPAY_BG} !important;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
 @st.cache_data(show_spinner="Loading regulatory database...")
 def load_data(db_path: str) -> pd.DataFrame:
     conn = sqlite3.connect(db_path)
@@ -66,8 +43,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        status,
-        type,
+        status AS Status,
+        type AS Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -85,8 +62,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        status,
-        type,
+        Status,
+        Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -104,8 +81,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        status,
-        type,
+        Status,
+        Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -123,8 +100,8 @@ def load_data(db_path: str) -> pd.DataFrame:
         title,
         source,
         published_date,
-        status,
-        type,
+        Status,
+        Type,
         summary,
         url,
         refined_category AS impact_area,
@@ -146,12 +123,12 @@ def load_data(db_path: str) -> pd.DataFrame:
     df["relevance"] = pd.to_numeric(df["relevance"], errors="coerce").fillna(0)
     df["urgency"] = pd.to_numeric(df["urgency"], errors="coerce").fillna(0)
 
-    df["type"] = df["type"].fillna("Unknown")
+    df["Type"] = df["Type"].fillna("Unknown")
     df["urgency_level"] = df["urgency_level"].fillna("unknown").str.lower()
     df["impact_area"] = df["impact_area"].fillna("Unclassified")
     df["summary"] = df["summary"].fillna("No summary available.")
     df["source"] = df["source"].fillna("Unknown")
-    df["status"] = df["status"].fillna("Unknown")
+    df["Status"] = df["Status"].fillna("Unknown")
     df["title"] = df["title"].fillna("Untitled item")
 
     return df.sort_values(["score", "published_date"], ascending=[False, False])
@@ -180,7 +157,6 @@ def donut_colors(labels: list[str], label_col: str) -> list[str]:
         return [URGENCY_COLORS.get(label.lower(), "#9CA3AF") for label in labels]
 
     return [SCALAPAY_COLORS[i % len(SCALAPAY_COLORS)] for i in range(len(labels))]
-
 
 def make_donut(
     counts: pd.DataFrame,
@@ -211,19 +187,19 @@ def make_donut(
             textposition="inside",
             texttemplate="%{customdata[1]}<br>%{customdata[2]}",
             hovertemplate="%{label}<br>%{value} items<extra></extra>",
-            insidetextorientation="tangential",
+            insidetextorientation="radial",
         )
     )
 
     fig.update_layout(
-        title=dict(text=title, x=0.5, y=0.96),
+    title=dict(text=title, x=0.5, y=1.0),
         showlegend=False,
         margin=dict(t=0, b=0, l=0, r=0),
         height=470,
         uniformtext_minsize=10,
         uniformtext_mode="hide",
-        paper_bgcolor=SCALAPAY_BG,
-        plot_bgcolor=SCALAPAY_BG,
+        plot_bgcolor='rgba(0, 0, 0, 0)',
+        paper_bgcolor='rgba(0, 0, 0, 0)',
         font=dict(color="#2B2B2B"),
         clickmode="event+select",
     )
@@ -272,7 +248,7 @@ def render_clickable_donut(
 def render_home(df: pd.DataFrame) -> None:
     st.title("⚖️ Regulatory Monitoring Dashboard")
     st.write(
-        "A compact view of monitored regulatory items, grouped by document type and urgency."
+        "A compact view of monitored regulatory items, grouped by document Type and urgency."
     )
 
     top1, top2, top3 = st.columns(3)
@@ -285,8 +261,8 @@ def render_home(df: pd.DataFrame) -> None:
 
     left, right = st.columns(2)
 
-    type_counts = (
-        df.groupby("type", dropna=False)
+    Type_counts = (
+        df.groupby("Type", dropna=False)
         .size()
         .reset_index(name="count")
         .sort_values("count", ascending=False)
@@ -301,12 +277,12 @@ def render_home(df: pd.DataFrame) -> None:
 
     with left:
         render_clickable_donut(
-            type_counts,
-            label_col="type",
+            Type_counts,
+            label_col="Type",
             value_col="count",
-            title="Items by type",
-            mode="type",
-            key="type_donut",
+            title="Items by Type",
+            mode="Type",
+            key="Type_donut",
         )
 
     with right:
@@ -325,8 +301,8 @@ def filter_df(
     mode: str,
     value: str | None,
 ) -> pd.DataFrame:
-    if mode == "type" and value:
-        return df[df["type"] == value]
+    if mode == "Type" and value:
+        return df[df["Type"] == value]
 
     if mode == "urgency_level" and value:
         return df[df["urgency_level"] == value]
@@ -362,9 +338,9 @@ def render_database(
         ):
             navigate("all", None)
 
-    if mode == "type":
+    if mode == "Type":
         st.title(f"Database: {value}")
-        st.caption(f"Showing all regulatory items with type = {value}")
+        st.caption(f"Showing all regulatory items with Type = {value}")
     elif mode == "urgency_level":
         st.title(f"Database: {value.title()} urgency")
         st.caption(f"Showing all regulatory items with urgency level = {value}")
@@ -375,30 +351,63 @@ def render_database(
         st.title("Full regulatory database")
         st.caption("Showing all monitored regulatory items.")
 
-    st.metric("Items shown", len(filtered))
-
     st.divider()
+    # creat filters for source, Status, Type, urgency_level, and impact_area
+    filter_cols = st.columns(5)
 
-    search = st.text_input(
-        "Search title, summary or impact area",
-        placeholder="Example: payment services, AML, DORA, consumer credit",
-        key="database_search_input",
-    )
+    with filter_cols[0]:
+        source_options = ["All"] + sorted(filtered["source"].dropna().unique().tolist())
+        selected_source = st.selectbox("Source", source_options, index=0)
 
-    if search:
-        mask = (
-            filtered["title"].str.contains(search, case=False, na=False)
-            | filtered["summary"].str.contains(search, case=False, na=False)
-            | filtered["impact_area"].str.contains(search, case=False, na=False)
+    with filter_cols[1]:
+        Status_options = ["All"] + sorted(filtered["Status"].dropna().unique().tolist())
+        selected_Status = st.selectbox("Status", Status_options, index=0)
+
+    with filter_cols[2]:
+        Type_options = ["All"] + sorted(filtered["Type"].dropna().unique().tolist())
+        selected_Type = st.selectbox("Type", Type_options, index=0)
+
+    with filter_cols[3]:
+        urgency_options = ["All"] + sorted(filtered["urgency_level"].dropna().unique().tolist())
+        selected_urgency = st.selectbox("Urgency", urgency_options, index=0)
+
+    with filter_cols[4]:
+        impact_options = sorted(
+            {
+                part.strip()
+                for value in filtered["impact_area"].dropna().astype(str)
+                for part in value.split(";")
+                if part.strip()
+            }
         )
-        filtered = filtered[mask]
+        selected_impact_areas = st.multiselect("Impact area", impact_options)
+    if selected_source != "All":
+        filtered = filtered[filtered["source"] == selected_source]
+
+    if selected_Status != "All":
+        filtered = filtered[filtered["Status"] == selected_Status]
+
+    if selected_Type != "All":
+        filtered = filtered[filtered["Type"] == selected_Type]
+
+    if selected_urgency != "All":
+        filtered = filtered[filtered["urgency_level"] == selected_urgency]
+
+    if selected_impact_areas:
+        impact_mask = filtered["impact_area"].fillna("").apply(
+            lambda value: any(
+                area in {part.strip() for part in value.split(";")}
+                for area in selected_impact_areas
+            )
+        )
+        filtered = filtered[impact_mask]
 
     display_cols = [
         "title",
         "source",
         "published_date",
-        "status",
-        "type",
+        "Status",
+        "Type",
         "impact_area",
         "urgency_level",
         "score",
@@ -470,15 +479,15 @@ def main() -> None:
         st.divider()
         st.subheader("Types")
 
-        type_counts = df["type"].value_counts().sort_index()
+        Type_counts = df["Type"].value_counts().sort_index()
 
-        for index, (item_type, count) in enumerate(type_counts.items()):
+        for index, (item_Type, count) in enumerate(Type_counts.items()):
             if st.button(
-                f"{item_type} ({count})",
+                f"{item_Type} ({count})",
                 use_container_width=True,
-                key=f"sidebar_type_{index}",
+                key=f"sidebar_Type_{index}",
             ):
-                navigate("type", item_type)
+                navigate("Type", item_Type)
 
         st.divider()
         st.caption(f"Database: `{Path(db_path).name}`")
