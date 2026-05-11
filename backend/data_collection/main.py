@@ -54,9 +54,8 @@ def main():
     # Run EBA Guidelines
     print_header("STEP 4: EBA GUIDELINES")
     try:
-        inserted, skipped = eba_guidelines_scrape()
-        print(f"✓ Inserted {inserted} new EBA Guidelines")
-        print(f"✓ Skipped {skipped} duplicate entries")
+        count = eba_guidelines_scrape()
+        print(f"✓ Stored {count} EBA Guidelines")
     except Exception as e:
         print(f"⚠ Error in EBA Guidelines: {e}")
     
@@ -65,9 +64,8 @@ def main():
     # Run EBA RTS
     print_header("STEP 5: EBA RTS (REGULATORY TECHNICAL STANDARDS)")
     try:
-        inserted, skipped = eba_rts_scrape()
-        print(f"✓ Inserted {inserted} new EBA RTS")
-        print(f"✓ Skipped {skipped} duplicate entries")
+        count = eba_rts_scrape()
+        print(f"✓ Stored {count} EBA RTS")
     except Exception as e:
         print(f"⚠ Error in EBA RTS: {e}")
     
